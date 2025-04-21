@@ -120,7 +120,7 @@ func (c *lruCache) SetWithExpiration(key string, value Value, expiration time.Du
 	entry := &lruEntry{key: key, value: value}
 	elem := c.list.PushBack(entry)
 	c.items[key] = elem
-	c.usedBytes += int64(len(key) + value.Len())
+	c.usedBytes = int64(len(key) + value.Len())
 
 	// 检查是否有需要淘汰项
 	c.evict()

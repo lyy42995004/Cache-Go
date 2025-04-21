@@ -51,8 +51,8 @@ func NewStore(cacheType CacheType, opts Options) Store {
 	switch cacheType {
 	case LRU:
 		return newLRUCache(opts)
-	// case LRU2:
-	// 	return newLRU2Cace(opts)
+	case LRU2:
+		return newLRU2Cache(opts)
 	default:
 		return newLRUCache(opts)
 	}
