@@ -42,7 +42,7 @@ func newLRU2Cache(opts Options) *lru2Store{
 
 	for i := range s.caches {
 		s.caches[i][0] = Create(opts.CapPerBucket)
-		s.caches[i][0] = Create(opts.Level2Cap)
+		s.caches[i][1] = Create(opts.Level2Cap)
 	}
 
 	if opts.CleanupInterval > 0 {
@@ -60,7 +60,7 @@ func (s *lru2Store) Get(key string) (Value, bool) {
 
 	currentTime := Now()
 
-	// 查找一级缓存
+	// 查找一级缓存，命中会触发移动（未过期）或删除（已过期）
 	n1, status1, expireAt := s.caches[idx][0].del(key)
 	if status1 > 0 { 
 		// 从一级缓存找到项目
@@ -105,17 +105,32 @@ func (s *lru2Store) get(key string, idx, level int32) (*node, int) {
 	return nil, 0
 }
 
-// Set
+// 常量表示永不过期
+const Forever = time.Duration(0x7FFFFFFFFFFFFFFF)
+
+// Set 实现Store接口
 func (s *lru2Store) Set(key string, value Value) error {
-	return s.SetWithExpiration(key, value, )
+	return s.SetWithExpiration(key, value, Forever)
 }
 
-// SetWithExpiration
+// SetWithExpiration 实现Store接口
 func (s *lru2Store) SetWithExpiration(key string, value Value,  expiration time.Duration) error {
+	expireAt := int64(0)
+	if expiration > 0 {
+		// now() 返回纳秒时间戳，确保 expiration 也是纳秒单位
+		expireAt = Now() + int64(expiration.Nanoseconds())
+	}
 
+	idx := hashBKRD(key) & s.mask
+	s.locks[idx].Lock()
+	defer s.locks[idx].Unlock()
+
+	s.caches[idx][0].put(key, value, expireAt, s.onEvicted)
+
+	return nil
 }
 
-// Delete
+// Delete 实现Store接口
 func (s *lru2Store) Delete(key string) bool {
 	idx := hashBKRD(key) & s.mask
 	s.locks[idx].Lock()
@@ -141,9 +156,83 @@ func (s *lru2Store) delete(key string, idx int32) bool {
 	return deleted
 }
 
+// Clear 实现Store接口
+func (s *lru2Store) Clear() {
+	keys := make(map[string]struct{})
+
+	for i := range s.caches {
+		s.locks[i].Lock()
+
+		walker := func(key string, value Value, expireAt int64) bool {
+			keys[key] = struct{}{}
+			return true
+		}
+
+		s.caches[i][0].walk(walker)
+		s.caches[i][1].walk(walker)
+	}
+
+	for key := range keys {
+		s.Delete(key)
+	}
+}
+
+// Len 实现Store接口
+func (s *lru2Store) Len() int {
+	cnt := 0
+
+	for i := range s.caches {
+		s.locks[i].Lock()
+
+		walker := func (key string, value Value, expireAt int64) bool {
+			cnt++;
+			return true	
+		}
+
+		s.caches[i][0].walk(walker)
+		s.caches[i][1].walk(walker)
+
+		s.locks[i].Unlock()
+	}
+
+	return cnt
+}
+
+// Close 实现Store接口
+func (s *lru2Store) Close() {
+	if s.cleanupTicker != nil {
+		s.cleanupTicker.Stop()
+	}
+}
+
 // cleanupLoop
 func (s *lru2Store) cleanupLoop() {
+	for range s.cleanupTicker.C {
+		currentTime := Now()
 
+		for i := range s.caches {
+			s.locks[i].Lock()
+
+			expireKeys := make(map[string]struct{})
+
+			walker := func(key string, value Value, expireAt int64) bool {
+				if expireAt > 0 && currentTime >= expireAt {
+					expireKeys[key] = struct{}{}
+				}
+				return true
+			}
+
+			s.caches[i][0].walk(walker)
+			s.caches[i][1].walk(walker)
+			
+			for key := range expireKeys {
+				s.delete(key, int32(i))
+			}
+
+			s.locks[i].Unlock()
+		}
+
+	}
 }
 
 // 内部时钟，减少 time.Now() 调用的造成的 GC 压力
@@ -181,7 +270,7 @@ func maskOfNextPowOf2(cap uint16) uint16 {
 type node struct {
 	key      string
 	value    Value
-	expireAt int64 // 过期时间戳
+	expireAt int64 // 过期时间戳，0表示删除
 }
 
 // 双向链表的前驱节点和后继结点
@@ -281,4 +370,15 @@ func (c *cache) del(key string) (*node, int, int64) {
 		return &c.m[idx - 1], 1, e
 	}
 	return nil, 0, 0
+}
+
+// walk 遍历缓存中的所有有效项
+func (c *cache) walk(walker func(key string, value Value, expireAt int64) bool) {
+	for idx := c.dlnk[0][suc]; idx != 0; idx = c.dlnk[idx][suc] {
+		n := c.m[idx - 1]
+		// 缓存已被删除 or walker 函数返回 false
+		if n.expireAt <= 0 || !walker(n.key, n.value, n.expireAt) {
+			return
+		}
+	}
 }
