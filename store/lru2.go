@@ -1,7 +1,7 @@
 package store
 
 import (
-	"log"
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -67,12 +67,12 @@ func (s *lru2Store) Get(key string) (Value, bool) {
 		if expireAt > 0 && currentTime >= expireAt {
 			// 项目已过期，删除它
 			s.delete(key, idx)
-			log.Println("找到条目已过期，并删除")
+			fmt.Println("找到条目已过期，并删除")
 			return nil, false
 		}
 		// 项目有效，将其移至二级缓存
 		s.caches[idx][1].put(key, n1.value, expireAt, s.onEvicted)
-		log.Println("条目有效，移至二级缓存")
+		fmt.Println("条目有效，移至二级缓存")
 		return n1.value, true
 	}
 
@@ -82,7 +82,7 @@ func (s *lru2Store) Get(key string) (Value, bool) {
 		if n2.expireAt > 0 && currentTime >= n2.expireAt {
 			// 项目已过期，删除它
 			s.delete(key, idx)
-			log.Println("找到条目已过期，并删除")
+			fmt.Println("找到条目已过期，并删除")
 			return nil, false
 		}
 		return n2.value, true
