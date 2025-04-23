@@ -17,7 +17,7 @@ type lru2Store struct {
 }
 
 // newLRU2Cache 创建 LRU2Store 实例
-func newLRU2Cache(opts Options) *lru2Store{
+func newLRU2Cache(opts Options) *lru2Store {
 	if opts.BucketCount == 0 {
 		opts.BucketCount = 16
 	}
@@ -29,15 +29,15 @@ func newLRU2Cache(opts Options) *lru2Store{
 	}
 	if opts.CleanupInterval <= 0 {
 		opts.CleanupInterval = time.Minute
-	}	
+	}
 
 	mask := maskOfNextPowOf2(opts.BucketCount)
 	s := &lru2Store{
-		locks: make([]sync.Mutex, mask + 1),
-		caches: make([][2]*cache, mask + 1),
-		onEvicted: opts.onEvicted,
+		locks:         make([]sync.Mutex, mask+1),
+		caches:        make([][2]*cache, mask+1),
+		onEvicted:     opts.OnEvicted,
 		cleanupTicker: time.NewTicker(opts.CleanupInterval),
-		mask: int32(mask),
+		mask:          int32(mask),
 	}
 
 	for i := range s.caches {
@@ -62,7 +62,7 @@ func (s *lru2Store) Get(key string) (Value, bool) {
 
 	// 查找一级缓存，命中会触发移动（未过期）或删除（已过期）
 	n1, status1, expireAt := s.caches[idx][0].del(key)
-	if status1 > 0 { 
+	if status1 > 0 {
 		// 从一级缓存找到项目
 		if expireAt > 0 && currentTime >= expireAt {
 			// 项目已过期，删除它
@@ -94,7 +94,7 @@ func (s *lru2Store) Get(key string) (Value, bool) {
 // get 从指定缓存桶和缓存级别中，获取指定键对应的缓存节点
 // 1 表示找到，0 表示未找到
 func (s *lru2Store) get(key string, idx, level int32) (*node, int) {
-	if n, st :=  s.caches[idx][level].get(key); st > 0 && n != nil {
+	if n, st := s.caches[idx][level].get(key); st > 0 && n != nil {
 		currentTime := Now()
 		if n.expireAt <= 0 || currentTime >= n.expireAt {
 			return nil, 0
@@ -106,7 +106,7 @@ func (s *lru2Store) get(key string, idx, level int32) (*node, int) {
 }
 
 // 常量表示永不过期
-const Forever = time.Duration(0x7FFFFFFFFFFFFFFF)
+const Forever = time.Duration(0x7FFFFFFFF)
 
 // Set 实现Store接口
 func (s *lru2Store) Set(key string, value Value) error {
@@ -114,7 +114,7 @@ func (s *lru2Store) Set(key string, value Value) error {
 }
 
 // SetWithExpiration 实现Store接口
-func (s *lru2Store) SetWithExpiration(key string, value Value,  expiration time.Duration) error {
+func (s *lru2Store) SetWithExpiration(key string, value Value, expiration time.Duration) error {
 	expireAt := int64(0)
 	if expiration > 0 {
 		// now() 返回纳秒时间戳，确保 expiration 也是纳秒单位
@@ -184,9 +184,9 @@ func (s *lru2Store) Len() int {
 	for i := range s.caches {
 		s.locks[i].Lock()
 
-		walker := func (key string, value Value, expireAt int64) bool {
-			cnt++;
-			return true	
+		walker := func(key string, value Value, expireAt int64) bool {
+			cnt++
+			return true
 		}
 
 		s.caches[i][0].walk(walker)
@@ -224,7 +224,7 @@ func (s *lru2Store) cleanupLoop() {
 
 			s.caches[i][0].walk(walker)
 			s.caches[i][1].walk(walker)
-			
+
 			for key := range expireKeys {
 				s.delete(key, int32(i))
 			}
@@ -260,7 +260,7 @@ func maskOfNextPowOf2(cap uint16) uint16 {
 	}
 
 	// 通过多次右移和按位或操作，将二进制中最高的 1 位右边的所有位都填充为 1
-	cap |= cap >> 1	
+	cap |= cap >> 1
 	cap |= cap >> 2
 	cap |= cap >> 4
 
@@ -300,17 +300,17 @@ func Create(cap uint16) *cache {
 func (c *cache) put(key string, value Value, expireAt int64, onEvicted func(string, Value)) int {
 	// 更新
 	if idx, ok := c.hmap[key]; ok {
-		c.m[idx - 1].value, c.m[idx - 1].expireAt = value, expireAt;
+		c.m[idx-1].value, c.m[idx-1].expireAt = value, expireAt
 		c.adjust(idx, pred, suc)
 		return 0
 	}
 
 	// 缓存已满，产生替换
 	if c.last == uint16(cap(c.m)) {
-		tail := &c.m[c.dlnk[0][pred] - 1]
-		if  onEvicted != nil && tail.expireAt > 0 {
+		tail := &c.m[c.dlnk[0][pred]-1]
+		if onEvicted != nil && tail.expireAt > 0 {
 			onEvicted(tail.key, tail.value)
-		}	
+		}
 
 		delete(c.hmap, tail.key)
 		c.adjust(c.dlnk[0][pred], pred, suc)
@@ -319,35 +319,37 @@ func (c *cache) put(key string, value Value, expireAt int64, onEvicted func(stri
 	}
 
 	// 添加
-	c.m[c.last].key, c.m[c.last].value, c.m[c.last].expireAt = key, value, expireAt
-
 	c.last++
-	c.hmap[key] = c.last
-	c.dlnk[0][suc] = c.last
-	c.dlnk[c.last] = [2]uint16{0, c.dlnk[0][pred]}
 
+	// 连接新节点
 	if len(c.hmap) <= 0 {
 		c.dlnk[0][pred] = c.last
 	} else {
-		c.dlnk[c.dlnk[0][suc]][pred] = c.last
+		c.dlnk[c.dlnk[0][suc]][pred] = c.last // 旧头->新头
 	}
+	c.dlnk[c.last] = [2]uint16{0, c.dlnk[0][suc]} // 新头->哨兵 旧头
+	c.dlnk[0][suc] = c.last // 哨兵->新头
+
+	c.hmap[key] = c.last
+	c.m[c.last-1].key, c.m[c.last-1].value, c.m[c.last-1].expireAt = key, value, expireAt
+
 	return 1
 }
 
-// adjust 调整节点在链表中的位置 
+// adjust 调整节点在链表中的位置
 // 当 p=0, s=1 时，移动到链表头部；否则移动到链表尾部
 func (c *cache) adjust(idx, p, s uint16) {
 	if c.dlnk[idx][p] != 0 {
 		// 取出原节点
-		c.dlnk[c.dlnk[idx][s]][p] = c.dlnk[idx][p]
-		c.dlnk[c.dlnk[idx][p]][s] = c.dlnk[idx][s]
+		prev, next := c.dlnk[idx][p], c.dlnk[idx][s]
+        c.dlnk[next][p], c.dlnk[prev][s] = prev, next
 
 		// 插入
-		c.dlnk[idx][p] = 0
-		c.dlnk[0][s] = idx
+		c.dlnk[idx][p] = 0            // 更新当前节点的前置节点为哨兵节点
+		c.dlnk[idx][s] = c.dlnk[0][s] // 更新当前节点的后继节点为原头节点
 
-		c.dlnk[idx][s] = c.dlnk[0][s]
-		c.dlnk[c.dlnk[0][s]][p] = idx
+		c.dlnk[c.dlnk[0][s]][p] = idx // 更新原头节点的前置节点
+		c.dlnk[0][s] = idx            // 更新哨兵节点的后继节点
 	}
 }
 
@@ -356,18 +358,18 @@ func (c *cache) adjust(idx, p, s uint16) {
 func (c *cache) get(key string) (*node, int) {
 	if idx, ok := c.hmap[key]; ok {
 		c.adjust(idx, pred, suc)
-		return &c.m[idx - 1], 1
+		return &c.m[idx-1], 1
 	}
 	return nil, 0
 }
 
 // del 从缓存中删除键对应的项
 func (c *cache) del(key string) (*node, int, int64) {
-	if idx, ok := c.hmap[key]; ok && c.m[idx - 1].expireAt > 0 {
-		e := c.m[idx - 1].expireAt
-		c.m[idx - 1].expireAt = 0 // 标记为删除
-		c.adjust(idx, suc, pred)  // 移动到链表尾部
-		return &c.m[idx - 1], 1, e
+	if idx, ok := c.hmap[key]; ok && c.m[idx-1].expireAt > 0 {
+		e := c.m[idx-1].expireAt
+		c.m[idx-1].expireAt = 0  // 标记为删除
+		c.adjust(idx, suc, pred) // 移动到链表尾部
+		return &c.m[idx-1], 1, e
 	}
 	return nil, 0, 0
 }
@@ -375,7 +377,7 @@ func (c *cache) del(key string) (*node, int, int64) {
 // walk 遍历缓存中的所有有效项
 func (c *cache) walk(walker func(key string, value Value, expireAt int64) bool) {
 	for idx := c.dlnk[0][suc]; idx != 0; idx = c.dlnk[idx][suc] {
-		n := c.m[idx - 1]
+		n := c.m[idx-1]
 		// 缓存已被删除 or walker 函数返回 false
 		if n.expireAt <= 0 || !walker(n.key, n.value, n.expireAt) {
 			return

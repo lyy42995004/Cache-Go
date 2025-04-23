@@ -33,7 +33,7 @@ type Options struct {
 	CapPerBucket    uint16                        // 每个桶容量(lru2)
 	Level2Cap       uint16                        // 二级缓存容量(lru2)
 	CleanupInterval time.Duration                 // 清理时间间隔
-	onEvicted       func(key string, value Value) // 回调函数
+	OnEvicted       func(key string, value Value) // 回调函数
 }
 
 func NewOptions() Options {
@@ -43,7 +43,7 @@ func NewOptions() Options {
 		CapPerBucket:    512,
 		Level2Cap:       256,
 		CleanupInterval: time.Minute,
-		onEvicted:       nil,
+		OnEvicted:       nil,
 	}
 }
 
