@@ -76,7 +76,7 @@ func (c *Cache) ensureInitialized() {
 		c.store = store.NewStore(c.opts.CacheType, storeOpts)
 
 		atomic.StoreInt32(&c.initialized, 1)
-		
+
 		logrus.Infof("Cache initialized with type %s, max bytes: %d", c.opts.CacheType, c.opts.MaxBytes)
 	}
 }
@@ -109,7 +109,7 @@ func (c *Cache) SetWithExpiration(key string, value ByteView, expirationTime tim
 	if ex <= 0 {
 		logrus.Debugf("Key %s already expired, not adding to cache", key)
 		return
-	}	
+	}
 
 	// 设置到底层存储
 	if err := c.store.SetWithExpiration(key, value, ex); err != nil {
@@ -128,8 +128,8 @@ func (c *Cache) Get(ctx context.Context, key string) (value ByteView, ok bool) {
 		return ByteView{}, false
 	}
 
-	c.mu.Lock()
-	defer c.mu.Unlock()
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 
 	val, found := c.store.Get(key)
 	if !found {
@@ -146,4 +146,92 @@ func (c *Cache) Get(ctx context.Context, key string) (value ByteView, ok bool) {
 	logrus.Warnf("Type assertion failed for key %s, expected ByteView", key)
 	atomic.AddInt64(&c.misses, 1)
 	return ByteView{}, false
+}
+
+// Delete 从缓存中删除一个 key
+func (c *Cache) Delete(key string) bool {
+	if atomic.LoadInt32(&c.closed) == 1 || atomic.LoadInt32(&c.initialized) == 0 {
+		return false
+	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	return c.store.Delete(key)
+}
+
+// Clear 清空缓存
+func (c *Cache) Clear() {
+	if atomic.LoadInt32(&c.closed) == 1 || atomic.LoadInt32(&c.initialized) == 0 {
+		return
+	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	c.store.Clear()
+
+	// 重置统计信息
+	atomic.StoreInt64(&c.hits, 0)
+	atomic.StoreInt64(&c.misses, 0)
+}
+
+// Len 返回缓存的当前存储项数量
+func (c *Cache) Len() int {
+	if atomic.LoadInt32(&c.closed) == 1 || atomic.LoadInt32(&c.initialized) == 0 {
+		return 0
+	}
+
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	return c.store.Len()
+}
+
+// Close 关闭缓存，释放资源
+func (c *Cache) Close() {
+	// 如果已关闭，返回；如果未关闭，改为已关闭
+	if !atomic.CompareAndSwapInt32(&c.closed, 0, 1) {
+		return
+	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	// 关闭底层存储
+	if c.store != nil {
+		if closer, ok := c.store.(interface{ Close() }); ok {
+			closer.Close()
+		}
+		c.store = nil
+	}
+
+	// 重置缓存状态
+	atomic.StoreInt32(&c.initialized, 0)
+
+	logrus.Debugf("Cache closed, hits: %d, misses: %d", atomic.LoadInt64(&c.hits), atomic.LoadInt64(&c.misses))
+}
+
+// Stats 返回缓存统计信息
+func (c *Cache) Stats() map[string]any {
+	stats := map[string]any{
+		"initialized": atomic.LoadInt32(&c.initialized) == 1,
+		"closed":      atomic.LoadInt32(&c.closed) == 1,
+		"hits":        atomic.LoadInt64(&c.hits),
+		"misses":      atomic.LoadInt64(&c.misses),
+	}
+
+	if atomic.LoadInt32(&c.initialized) == 1 {
+		stats["size"] = c.Len()
+
+		// 计算命中率
+		totalRequests := stats["hits"].(int64) + stats["misses"].(int64)
+		if totalRequests > 0 {
+			stats["hit_rate"] = float64(stats["hits"].(int64)) / float64(totalRequests)
+		} else {
+			stats["hit_rate"] = 0.0
+		}
+	}
+
+	return stats
 }
