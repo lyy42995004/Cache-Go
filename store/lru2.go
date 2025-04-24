@@ -170,6 +170,8 @@ func (s *lru2Store) Clear() {
 
 		s.caches[i][0].walk(walker)
 		s.caches[i][1].walk(walker)
+
+		s.locks[i].Unlock()
 	}
 
 	for key := range keys {
@@ -244,9 +246,22 @@ func Now() int64 {
 	return atomic.LoadInt64(&clock)
 }
 
+func init() {
+	go func() {
+		for {
+			atomic.StoreInt64(&clock, time.Now().UnixNano()) // 每秒校准一次
+			for range 9 {
+				time.Sleep(100 * time.Millisecond)
+				atomic.AddInt64(&clock, int64(100*time.Millisecond)) // 保持 clock 在一个精确的时间范围内，同时避免频繁的系统调用
+			}
+			time.Sleep(100 * time.Millisecond)
+		}
+	}()
+}
+
 // hashBKRD BKDR 哈希算法，用于计算键的哈希值
 func hashBKRD(s string) (hash int32) {
-	for i := 0; i < len(s); i++ {
+	for i := range s {
 		hash = hash*131 + int32(s[i])
 	}
 

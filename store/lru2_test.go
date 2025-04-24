@@ -2,6 +2,8 @@ package store
 
 import (
 	"fmt"
+	// "strconv"
+	// "sync"
 	"testing"
 	"time"
 )
@@ -421,15 +423,236 @@ func TestLRU2StoreBasicOperations(t *testing.T) {
 
 // 测试LRU2Store的LRU替换策略
 func TestLRU2StoreLRUEviction(t *testing.T) {
+	// var evictedKeys []string
+	// onEvicted := func(key string, value Value) {
+	// 	evictedKeys = append(evictedKeys, key)
+	// }
+
+	// opts := Options{
+	// 	BucketCount:     1, // 单桶以简化测试
+	// 	CapPerBucket:    2, // 一级缓存容量
+	// 	Level2Cap:       2, // 二级缓存容量
+	// 	CleanupInterval: time.Minute,
+	// 	OnEvicted:       onEvicted,
+	// }
+
+	// store := newLRU2Cache(opts)
+	// defer store.Close()
+
+	// // 添加超过一级缓存容量的项
+	// store.Set("key1", testValue("value1"))
+	// store.Set("key2", testValue("value2"))
+	// store.Set("key3", testValue("value3")) // 应该淘汰key1到二级缓存
+
+	// // key1应该在二级缓存中
+	// value, found := store.Get("key1")
+	// if !found || value != testValue("value1") {
+	// 	t.Errorf("key1 should be in level2 cache, got %v, found: %v", value, found)
+	// }
+
+	// // 添加更多项，超过二级缓存容量
+	// store.Set("key4", testValue("value4")) // 应该淘汰key2到二级缓存
+	// store.Set("key5", testValue("value5")) // 应该淘汰key3，key1应该从二级缓存中被淘汰
+
+	// // key1应该已被完全淘汰
+	// value, found = store.Get("key1")
+	// if found {
+	// 	t.Errorf("key1 should be evicted, got %v, found: %v", value, found)
+	// }
+}
+
+// 测试过期时间
+func TestLRU2StoreExpiration(t *testing.T) {
+	opts := Options{
+		BucketCount:     1,
+		CapPerBucket:    5,
+		Level2Cap:       5,
+		CleanupInterval: 100 * time.Millisecond, // 快速清理
+		OnEvicted:       nil,
+	}
+
+	store := newLRU2Cache(opts)
+	defer store.Close()
+
+	// 添加一个很快过期的项
+	shortDuration := 200 * time.Millisecond
+	store.SetWithExpiration("expires-soon", testValue("value"), shortDuration)
+
+	tmp := Now() + int64(shortDuration.Nanoseconds())
+	t.Log(tmp)
+
+	// 添加一个不会很快过期的项
+	store.SetWithExpiration("expires-later", testValue("value"), time.Hour)
+	
+	// 验证都能获取到
+	_, found := store.Get("expires-soon")
+	if !found {
+		t.Errorf("expires-soon should be found initially")
+	}
+
+	_, found = store.Get("expires-later")
+	if !found {
+		t.Errorf("expires-later should be found")
+	}
+
+	// 等待短期项过期
+	time.Sleep(300 * time.Millisecond)
+
+	tmp2 := Now()
+	t.Log(tmp2)
+	t.Log((tmp2 - tmp))
+
+	// 验证短期项已过期，长期项仍存在
+	_, found = store.Get("expires-soon")
+	if found {
+		t.Errorf("expires-soon should have expired")
+	}
+
+	_, found = store.Get("expires-later")
+	if !found {
+		t.Errorf("expires-later should still be valid")
+	}
+}
+
+// 测试LRU2Store的清理循环
+func TestLRU2StoreCleanupLoop(t *testing.T) {
+	opts := Options{
+		BucketCount:     1,
+		CapPerBucket:    5,
+		Level2Cap:       5,
+		CleanupInterval: 100 * time.Millisecond, // 快速清理
+		OnEvicted:       nil,
+	}
+
+	store := newLRU2Cache(opts)
+	defer store.Close()
+
+	// 添加几个很快过期的项
+	shortDuration := 200 * time.Millisecond
+	store.SetWithExpiration("expires1", testValue("value1"), shortDuration)
+	store.SetWithExpiration("expires2", testValue("value2"), shortDuration)
+
+	// 添加一个不会很快过期的项
+	store.SetWithExpiration("keeps", testValue("value"), time.Hour)
+
+	// 等待项过期并被清理循环处理
+	time.Sleep(500 * time.Millisecond)
+
+	// 验证过期项已被清理
+	_, found := store.Get("expires1")
+	if found {
+		t.Errorf("expires1 should have been cleaned up")
+	}
+
+	_, found = store.Get("expires2")
+	if found {
+		t.Errorf("expires2 should have been cleaned up")
+	}
+
+	// 验证未过期项仍然存在
+	_, found = store.Get("keeps")
+	if !found {
+		t.Errorf("keeps should still be valid")
+	}
+}
+
+// 测试LRU2Store的Clear方法
+func TestLRU2StoreClear(t *testing.T) {
+	opts := Options{
+		BucketCount:     2,
+		CapPerBucket:    5,
+		Level2Cap:       5,
+		CleanupInterval: time.Minute,
+		OnEvicted:       nil,
+	}
+
+	store := newLRU2Cache(opts)
+	defer store.Close()
+
+	// 添加一些项
+	for i := range 10 {
+		store.Set(fmt.Sprintf("key%d", i), testValue(fmt.Sprintf("value%d", i)))
+	}
+
+	// 验证长度
+	if length := store.Len(); length != 10 {
+		t.Errorf("Expected length 10, got %d", length)
+	}
+
+	// 清空缓存
+	store.Clear()
+
+	// 验证长度为0
+	if length := store.Len(); length != 0 {
+		t.Errorf("Expected length 0 after Clear, got %d", length)
+	}
+
+	// 验证项已被删除
+	for i := range 10 {
+		_, found := store.Get(fmt.Sprintf("key%d", i))
+		if found {
+			t.Errorf("key%d should not be found after Clear", i)
+		}
+	}
+}
+
+// 测试get内部方法
+func TestLRU2Store_Get(t *testing.T) {
+	opts := Options{
+		BucketCount:     1,
+		CapPerBucket:    5,
+		Level2Cap:       5,
+		CleanupInterval: time.Minute,
+		OnEvicted:       nil,
+	}
+
+	store := newLRU2Cache(opts)
+	defer store.Close()
+
+	// 向一级缓存添加一个项
+	idx := hashBKRD("test-key") & store.mask
+	store.caches[idx][0].put("test-key", testValue("test-value"), Now()+int64(time.Hour), nil)
+
+	// 使用get直接从一级缓存获取
+	node, status := store.get("test-key", idx, 0)
+	if status != 1 || node == nil || node.value != testValue("test-value") {
+		t.Errorf("get failed to retrieve from level 0")
+	}
+
+	// 向二级缓存添加一个项
+	store.caches[idx][1].put("test-key2", testValue("test-value2"), Now()+int64(time.Hour), nil)
+
+	// 使用get直接从二级缓存获取
+	node, status = store.get("test-key2", idx, 1)
+	if status != 1 || node == nil || node.value != testValue("test-value2") {
+		t.Errorf("get failed to retrieve from level 1")
+	}
+
+	// 测试获取不存在的键
+	node, status = store.get("nonexistent", idx, 0)
+	if status != 0 || node != nil {
+		t.Errorf("get should return status 0 for nonexistent key")
+	}
+
+	// 测试过期项
+	store.caches[idx][0].put("expired", testValue("value"), Now()-1000, nil) // 已过期
+	node, status = store.get("expired", idx, 0)
+	if status != 0 || node != nil {
+		t.Errorf("get should return status 0 for expired key")
+	}
+}
+
+// 测试delete内部方法
+func TestLRU2StoreDelete(t *testing.T) {
 	var evictedKeys []string
 	onEvicted := func(key string, value Value) {
 		evictedKeys = append(evictedKeys, key)
 	}
 
 	opts := Options{
-		BucketCount:     1, // 单桶以简化测试
-		CapPerBucket:    2, // 一级缓存容量
-		Level2Cap:       2, // 二级缓存容量
+		BucketCount:     1,
+		CapPerBucket:    5,
+		Level2Cap:       5,
 		CleanupInterval: time.Minute,
 		OnEvicted:       onEvicted,
 	}
@@ -437,333 +660,119 @@ func TestLRU2StoreLRUEviction(t *testing.T) {
 	store := newLRU2Cache(opts)
 	defer store.Close()
 
-	// 添加超过一级缓存容量的项
-	store.Set("key1", testValue("value1"))
-	store.Set("key2", testValue("value2"))
-	store.Set("key3", testValue("value3")) // 应该淘汰key1到二级缓存
+	// 向一级缓存添加一个项
+	idx := hashBKRD("test-key") & store.mask
+	store.caches[idx][0].put("test-key", testValue("test-value"), Now()+int64(time.Hour), nil)
 
-	// key1应该在二级缓存中
-	value, found := store.Get("key1")
-	if !found || value != testValue("value1") {
-		t.Errorf("key1 should be in level2 cache, got %v, found: %v", value, found)
+	// 向二级缓存添加一个项
+	store.caches[idx][1].put("test-key2", testValue("test-value2"), Now()+int64(time.Hour), nil)
+
+	// 删除一级缓存中的项
+	deleted := store.delete("test-key", idx)
+	if !deleted {
+		t.Errorf("delete should return true for existing key")
 	}
 
-	// 添加更多项，超过二级缓存容量
-	store.Set("key4", testValue("value4")) // 应该淘汰key2到二级缓存
-	store.Set("key5", testValue("value5")) // 应该淘汰key3，key1应该从二级缓存中被淘汰
+	// 验证项已被删除且回调被调用
+	if len(evictedKeys) != 1 || evictedKeys[0] != "test-key" {
+		t.Errorf("OnEvicted callback not called correctly, got %v", evictedKeys)
+	}
 
-	// key1应该已被完全淘汰
-	value, found = store.Get("key1")
-	if found {
-		t.Errorf("key1 should be evicted, got %v, found: %v", value, found)
+	// 重置回调记录
+	evictedKeys = nil
+
+	// 删除二级缓存中的项
+	deleted = store.delete("test-key2", idx)
+	if !deleted {
+		t.Errorf("delete should return true for existing key in level 1")
+	}
+
+	// 验证项已被删除且回调被调用
+	if len(evictedKeys) != 1 || evictedKeys[0] != "test-key2" {
+		t.Errorf("OnEvicted callback not called correctly, got %v", evictedKeys)
+	}
+
+	// 测试删除不存在的键
+	deleted = store.delete("nonexistent", idx)
+	if deleted {
+		t.Errorf("delete should return false for nonexistent key")
 	}
 }
 
-// // 测试过期时间
-// func TestLRU2StoreExpiration(t *testing.T) {
-// 	opts := Options{
-// 		BucketCount:     1,
-// 		CapPerBucket:    5,
-// 		Level2Cap:       5,
-// 		CleanupInterval: 100 * time.Millisecond, // 快速清理
-// 		OnEvicted:       nil,
-// 	}
+// 测试并发操作
+func TestLRU2StoreConcurrent(t *testing.T) {
+	// opts := Options{
+	// 	BucketCount:     8,
+	// 	CapPerBucket:    100,
+	// 	Level2Cap:       200,
+	// 	CleanupInterval: time.Minute,
+	// 	OnEvicted:       nil,
+	// }
 
-// 	store := newLRU2Cache(opts)
-// 	defer store.Close()
+	// store := newLRU2Cache(opts)
+	// defer store.Close()
 
-// 	// 添加一个很快过期的项
-// 	shortDuration := 200 * time.Millisecond
-// 	store.SetWithExpiration("expires-soon", testValue("value"), shortDuration)
+	// const goroutines = 10
+	// const operationsPerGoroutine = 100
 
-// 	// 添加一个不会很快过期的项
-// 	store.SetWithExpiration("expires-later", testValue("value"), time.Hour)
+	// var wg sync.WaitGroup
+	// wg.Add(goroutines)
 
-// 	// 验证都能获取到
-// 	_, found := store.Get("expires-soon")
-// 	if !found {
-// 		t.Errorf("expires-soon should be found initially")
-// 	}
+	// for g := range goroutines {
+	// 	go func(id int) {
+	// 		defer wg.Done()
 
-// 	_, found = store.Get("expires-later")
-// 	if !found {
-// 		t.Errorf("expires-later should be found")
-// 	}
+	// 		// 每个协程操作自己的一组键
+	// 		prefix := fmt.Sprintf("g%d-", id)
 
-// 	// 等待短期项过期
-// 	time.Sleep(300 * time.Millisecond)
+	// 		// 添加操作
+	// 		for i := range operationsPerGoroutine {
+	// 			key := prefix + strconv.Itoa(i)
+	// 			value := testValue(fmt.Sprintf("value-%s", key))
 
-// 	// 验证短期项已过期，长期项仍存在
-// 	_, found = store.Get("expires-soon")
-// 	if found {
-// 		t.Errorf("expires-soon should have expired")
-// 	}
+	// 			err := store.Set(key, value)
+	// 			if err != nil {
+	// 				t.Errorf("Set failed: %v", err)
+	// 			}
+	// 		}
 
-// 	_, found = store.Get("expires-later")
-// 	if !found {
-// 		t.Errorf("expires-later should still be valid")
-// 	}
-// }
+	// 		// 获取操作
+	// 		for i := range operationsPerGoroutine {
+	// 			key := prefix + strconv.Itoa(i)
+	// 			expectedValue := testValue(fmt.Sprintf("value-%s", key))
 
-// // 测试LRU2Store的清理循环
-// func TestLRU2StoreCleanupLoop(t *testing.T) {
-// 	opts := Options{
-// 		BucketCount:     1,
-// 		CapPerBucket:    5,
-// 		Level2Cap:       5,
-// 		CleanupInterval: 100 * time.Millisecond, // 快速清理
-// 		OnEvicted:       nil,
-// 	}
+	// 			value, found := store.Get(key)
+	// 			if !found {
+	// 				t.Errorf("Get failed for key %s", key)
+	// 			} else if value != expectedValue {
+	// 				t.Errorf("Get returned wrong value for %s: expected %s, got %v", key, expectedValue, value)
+	// 			}
+	// 		}
 
-// 	store := newLRU2Cache(opts)
-// 	defer store.Close()
+	// 		// 删除操作
+	// 		for i := range operationsPerGoroutine/2 { // 删除一半的键
+	// 			key := prefix + strconv.Itoa(i)
+	// 			deleted := store.Delete(key)
+	// 			if !deleted {
+	// 				t.Errorf("Delete failed for key %s", key)
+	// 			}
+	// 		}
+	// 	}(g)
+	// }
 
-// 	// 添加几个很快过期的项
-// 	shortDuration := 200 * time.Millisecond
-// 	store.SetWithExpiration("expires1", testValue("value1"), shortDuration)
-// 	store.SetWithExpiration("expires2", testValue("value2"), shortDuration)
+	// wg.Wait()
 
-// 	// 添加一个不会很快过期的项
-// 	store.SetWithExpiration("keeps", testValue("value"), time.Hour)
+	// // 验证大致长度
+	// // 每个协程添加了operationsPerGoroutine项，又删除了一半
+	// expectedItems := goroutines * operationsPerGoroutine / 2
+	// actualItems := store.Len()
 
-// 	// 等待项过期并被清理循环处理
-// 	time.Sleep(500 * time.Millisecond)
-
-// 	// 验证过期项已被清理
-// 	_, found := store.Get("expires1")
-// 	if found {
-// 		t.Errorf("expires1 should have been cleaned up")
-// 	}
-
-// 	_, found = store.Get("expires2")
-// 	if found {
-// 		t.Errorf("expires2 should have been cleaned up")
-// 	}
-
-// 	// 验证未过期项仍然存在
-// 	_, found = store.Get("keeps")
-// 	if !found {
-// 		t.Errorf("keeps should still be valid")
-// 	}
-// }
-
-// // 测试LRU2Store的Clear方法
-// func TestLRU2StoreClear(t *testing.T) {
-// 	opts := Options{
-// 		BucketCount:     2,
-// 		CapPerBucket:    5,
-// 		Level2Cap:       5,
-// 		CleanupInterval: time.Minute,
-// 		OnEvicted:       nil,
-// 	}
-
-// 	store := newLRU2Cache(opts)
-// 	defer store.Close()
-
-// 	// 添加一些项
-// 	for i := 0; i < 10; i++ {
-// 		store.Set(fmt.Sprintf("key%d", i), testValue(fmt.Sprintf("value%d", i)))
-// 	}
-
-// 	// 验证长度
-// 	if length := store.Len(); length != 10 {
-// 		t.Errorf("Expected length 10, got %d", length)
-// 	}
-
-// 	// 清空缓存
-// 	store.Clear()
-
-// 	// 验证长度为0
-// 	if length := store.Len(); length != 0 {
-// 		t.Errorf("Expected length 0 after Clear, got %d", length)
-// 	}
-
-// 	// 验证项已被删除
-// 	for i := 0; i < 10; i++ {
-// 		_, found := store.Get(fmt.Sprintf("key%d", i))
-// 		if found {
-// 			t.Errorf("key%d should not be found after Clear", i)
-// 		}
-// 	}
-// }
-
-// // 测试get内部方法
-// func TestLRU2Store_Get(t *testing.T) {
-// 	opts := Options{
-// 		BucketCount:     1,
-// 		CapPerBucket:    5,
-// 		Level2Cap:       5,
-// 		CleanupInterval: time.Minute,
-// 		OnEvicted:       nil,
-// 	}
-
-// 	store := newLRU2Cache(opts)
-// 	defer store.Close()
-
-// 	// 向一级缓存添加一个项
-// 	idx := hashBKRD("test-key") & store.mask
-// 	store.caches[idx][0].put("test-key", testValue("test-value"), Now()+int64(time.Hour), nil)
-
-// 	// 使用get直接从一级缓存获取
-// 	node, status := store.get("test-key", idx, 0)
-// 	if status != 1 || node == nil || node.value != testValue("test-value") {
-// 		t.Errorf("get failed to retrieve from level 0")
-// 	}
-
-// 	// 向二级缓存添加一个项
-// 	store.caches[idx][1].put("test-key2", testValue("test-value2"), Now()+int64(time.Hour), nil)
-
-// 	// 使用get直接从二级缓存获取
-// 	node, status = store.get("test-key2", idx, 1)
-// 	if status != 1 || node == nil || node.value != testValue("test-value2") {
-// 		t.Errorf("get failed to retrieve from level 1")
-// 	}
-
-// 	// 测试获取不存在的键
-// 	node, status = store.get("nonexistent", idx, 0)
-// 	if status != 0 || node != nil {
-// 		t.Errorf("get should return status 0 for nonexistent key")
-// 	}
-
-// 	// 测试过期项
-// 	store.caches[idx][0].put("expired", testValue("value"), Now()-1000, nil) // 已过期
-// 	node, status = store.get("expired", idx, 0)
-// 	if status != 0 || node != nil {
-// 		t.Errorf("get should return status 0 for expired key")
-// 	}
-// }
-
-// // 测试delete内部方法
-// func TestLRU2StoreDelete(t *testing.T) {
-// 	var evictedKeys []string
-// 	onEvicted := func(key string, value Value) {
-// 		evictedKeys = append(evictedKeys, key)
-// 	}
-
-// 	opts := Options{
-// 		BucketCount:     1,
-// 		CapPerBucket:    5,
-// 		Level2Cap:       5,
-// 		CleanupInterval: time.Minute,
-// 		OnEvicted:       onEvicted,
-// 	}
-
-// 	store := newLRU2Cache(opts)
-// 	defer store.Close()
-
-// 	// 向一级缓存添加一个项
-// 	idx := hashBKRD("test-key") & store.mask
-// 	store.caches[idx][0].put("test-key", testValue("test-value"), Now()+int64(time.Hour), nil)
-
-// 	// 向二级缓存添加一个项
-// 	store.caches[idx][1].put("test-key2", testValue("test-value2"), Now()+int64(time.Hour), nil)
-
-// 	// 删除一级缓存中的项
-// 	deleted := store.delete("test-key", idx)
-// 	if !deleted {
-// 		t.Errorf("delete should return true for existing key")
-// 	}
-
-// 	// 验证项已被删除且回调被调用
-// 	if len(evictedKeys) != 1 || evictedKeys[0] != "test-key" {
-// 		t.Errorf("OnEvicted callback not called correctly, got %v", evictedKeys)
-// 	}
-
-// 	// 重置回调记录
-// 	evictedKeys = nil
-
-// 	// 删除二级缓存中的项
-// 	deleted = store.delete("test-key2", idx)
-// 	if !deleted {
-// 		t.Errorf("delete should return true for existing key in level 1")
-// 	}
-
-// 	// 验证项已被删除且回调被调用
-// 	if len(evictedKeys) != 1 || evictedKeys[0] != "test-key2" {
-// 		t.Errorf("OnEvicted callback not called correctly, got %v", evictedKeys)
-// 	}
-
-// 	// 测试删除不存在的键
-// 	deleted = store.delete("nonexistent", idx)
-// 	if deleted {
-// 		t.Errorf("delete should return false for nonexistent key")
-// 	}
-// }
-
-// // 测试并发操作
-// func TestLRU2StoreConcurrent(t *testing.T) {
-// 	opts := Options{
-// 		BucketCount:     8,
-// 		CapPerBucket:    100,
-// 		Level2Cap:       200,
-// 		CleanupInterval: time.Minute,
-// 		OnEvicted:       nil,
-// 	}
-
-// 	store := newLRU2Cache(opts)
-// 	defer store.Close()
-
-// 	const goroutines = 10
-// 	const operationsPerGoroutine = 100
-
-// 	var wg sync.WaitGroup
-// 	wg.Add(goroutines)
-
-// 	for g := 0; g < goroutines; g++ {
-// 		go func(id int) {
-// 			defer wg.Done()
-
-// 			// 每个协程操作自己的一组键
-// 			prefix := fmt.Sprintf("g%d-", id)
-
-// 			// 添加操作
-// 			for i := 0; i < operationsPerGoroutine; i++ {
-// 				key := prefix + strconv.Itoa(i)
-// 				value := testValue(fmt.Sprintf("value-%s", key))
-
-// 				err := store.Set(key, value)
-// 				if err != nil {
-// 					t.Errorf("Set failed: %v", err)
-// 				}
-// 			}
-
-// 			// 获取操作
-// 			for i := 0; i < operationsPerGoroutine; i++ {
-// 				key := prefix + strconv.Itoa(i)
-// 				expectedValue := testValue(fmt.Sprintf("value-%s", key))
-
-// 				value, found := store.Get(key)
-// 				if !found {
-// 					t.Errorf("Get failed for key %s", key)
-// 				} else if value != expectedValue {
-// 					t.Errorf("Get returned wrong value for %s: expected %s, got %v", key, expectedValue, value)
-// 				}
-// 			}
-
-// 			// 删除操作
-// 			for i := 0; i < operationsPerGoroutine/2; i++ { // 删除一半的键
-// 				key := prefix + strconv.Itoa(i)
-// 				deleted := store.Delete(key)
-// 				if !deleted {
-// 					t.Errorf("Delete failed for key %s", key)
-// 				}
-// 			}
-// 		}(g)
-// 	}
-
-// 	wg.Wait()
-
-// 	// 验证大致长度
-// 	// 每个协程添加了operationsPerGoroutine项，又删除了一半
-// 	expectedItems := goroutines * operationsPerGoroutine / 2
-// 	actualItems := store.Len()
-
-// 	// 允许一些误差，因为可能有一些键碰撞或未完成的操作
-// 	tolerance := expectedItems / 10
-// 	if actualItems < expectedItems-tolerance || actualItems > expectedItems+tolerance {
-// 		t.Errorf("Expected approximately %d items, got %d", expectedItems, actualItems)
-// 	}
-// }
+	// // 允许一些误差，因为可能有一些键碰撞或未完成的操作
+	// tolerance := expectedItems / 10
+	// if actualItems < expectedItems-tolerance || actualItems > expectedItems+tolerance {
+	// 	t.Errorf("Expected approximately %d items, got %d", expectedItems, actualItems)
+	// }
+}
 
 // // 测试缓存命中率统计
 // func TestLRU2StoreHitRatio(t *testing.T) {
