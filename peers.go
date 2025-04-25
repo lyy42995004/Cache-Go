@@ -15,9 +15,9 @@ type PeerPicker interface {
 
 // Peer 定义缓存节点的接口
 type Peer interface {
-	Get(group string, key string) ([]byte, error)
+	Get(group, key string) ([]byte, error)
 	Set(ctx context.Context, group string, key string, value []byte) error
-	Delete(group string, key string) (bool, error)
+	Delete(group, key string) (bool, error)
 	Close() error
 }
 
