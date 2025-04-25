@@ -17,7 +17,7 @@ message ResponseForDelete {
   bool value = 1;
 }
 
-service GcacheCache {
+service GCache {
   rpc Get(Request) returns (ResponseForGet);
   rpc Set(Request) returns (ResponseForGet);
   rpc Delete(Request) returns(ResponseForDelete);

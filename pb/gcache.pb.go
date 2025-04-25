@@ -181,8 +181,8 @@ const file_gcache_proto_rawDesc = "" +
 	"\x0eResponseForGet\x12\x14\n" +
 	"\x05value\x18\x01 \x01(\fR\x05value\")\n" +
 	"\x11ResponseForDelete\x12\x14\n" +
-	"\x05value\x18\x01 \x01(\bR\x05value2\x8b\x01\n" +
-	"\vGcacheCache\x12&\n" +
+	"\x05value\x18\x01 \x01(\bR\x05value2\x86\x01\n" +
+	"\x06GCache\x12&\n" +
 	"\x03Get\x12\v.pb.Request\x1a\x12.pb.ResponseForGet\x12&\n" +
 	"\x03Set\x12\v.pb.Request\x1a\x12.pb.ResponseForGet\x12,\n" +
 	"\x06Delete\x12\v.pb.Request\x1a\x15.pb.ResponseForDeleteB\x04Z\x02./b\x06proto3"
@@ -206,12 +206,12 @@ var file_gcache_proto_goTypes = []any{
 	(*ResponseForDelete)(nil), // 2: pb.ResponseForDelete
 }
 var file_gcache_proto_depIdxs = []int32{
-	0, // 0: pb.GcacheCache.Get:input_type -> pb.Request
-	0, // 1: pb.GcacheCache.Set:input_type -> pb.Request
-	0, // 2: pb.GcacheCache.Delete:input_type -> pb.Request
-	1, // 3: pb.GcacheCache.Get:output_type -> pb.ResponseForGet
-	1, // 4: pb.GcacheCache.Set:output_type -> pb.ResponseForGet
-	2, // 5: pb.GcacheCache.Delete:output_type -> pb.ResponseForDelete
+	0, // 0: pb.GCache.Get:input_type -> pb.Request
+	0, // 1: pb.GCache.Set:input_type -> pb.Request
+	0, // 2: pb.GCache.Delete:input_type -> pb.Request
+	1, // 3: pb.GCache.Get:output_type -> pb.ResponseForGet
+	1, // 4: pb.GCache.Set:output_type -> pb.ResponseForGet
+	2, // 5: pb.GCache.Delete:output_type -> pb.ResponseForDelete
 	3, // [3:6] is the sub-list for method output_type
 	0, // [0:3] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name

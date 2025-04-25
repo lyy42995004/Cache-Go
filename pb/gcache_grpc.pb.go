@@ -19,177 +19,177 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	GcacheCache_Get_FullMethodName    = "/pb.GcacheCache/Get"
-	GcacheCache_Set_FullMethodName    = "/pb.GcacheCache/Set"
-	GcacheCache_Delete_FullMethodName = "/pb.GcacheCache/Delete"
+	GCache_Get_FullMethodName    = "/pb.GCache/Get"
+	GCache_Set_FullMethodName    = "/pb.GCache/Set"
+	GCache_Delete_FullMethodName = "/pb.GCache/Delete"
 )
 
-// GcacheCacheClient is the client API for GcacheCache service.
+// GCacheClient is the client API for GCache service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type GcacheCacheClient interface {
+type GCacheClient interface {
 	Get(ctx context.Context, in *Request, opts ...grpc.CallOption) (*ResponseForGet, error)
 	Set(ctx context.Context, in *Request, opts ...grpc.CallOption) (*ResponseForGet, error)
 	Delete(ctx context.Context, in *Request, opts ...grpc.CallOption) (*ResponseForDelete, error)
 }
 
-type gcacheCacheClient struct {
+type gCacheClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewGcacheCacheClient(cc grpc.ClientConnInterface) GcacheCacheClient {
-	return &gcacheCacheClient{cc}
+func NewGCacheClient(cc grpc.ClientConnInterface) GCacheClient {
+	return &gCacheClient{cc}
 }
 
-func (c *gcacheCacheClient) Get(ctx context.Context, in *Request, opts ...grpc.CallOption) (*ResponseForGet, error) {
+func (c *gCacheClient) Get(ctx context.Context, in *Request, opts ...grpc.CallOption) (*ResponseForGet, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ResponseForGet)
-	err := c.cc.Invoke(ctx, GcacheCache_Get_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, GCache_Get_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *gcacheCacheClient) Set(ctx context.Context, in *Request, opts ...grpc.CallOption) (*ResponseForGet, error) {
+func (c *gCacheClient) Set(ctx context.Context, in *Request, opts ...grpc.CallOption) (*ResponseForGet, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ResponseForGet)
-	err := c.cc.Invoke(ctx, GcacheCache_Set_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, GCache_Set_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *gcacheCacheClient) Delete(ctx context.Context, in *Request, opts ...grpc.CallOption) (*ResponseForDelete, error) {
+func (c *gCacheClient) Delete(ctx context.Context, in *Request, opts ...grpc.CallOption) (*ResponseForDelete, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ResponseForDelete)
-	err := c.cc.Invoke(ctx, GcacheCache_Delete_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, GCache_Delete_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// GcacheCacheServer is the server API for GcacheCache service.
-// All implementations must embed UnimplementedGcacheCacheServer
+// GCacheServer is the server API for GCache service.
+// All implementations must embed UnimplementedGCacheServer
 // for forward compatibility.
-type GcacheCacheServer interface {
+type GCacheServer interface {
 	Get(context.Context, *Request) (*ResponseForGet, error)
 	Set(context.Context, *Request) (*ResponseForGet, error)
 	Delete(context.Context, *Request) (*ResponseForDelete, error)
-	mustEmbedUnimplementedGcacheCacheServer()
+	mustEmbedUnimplementedGCacheServer()
 }
 
-// UnimplementedGcacheCacheServer must be embedded to have
+// UnimplementedGCacheServer must be embedded to have
 // forward compatible implementations.
 //
 // NOTE: this should be embedded by value instead of pointer to avoid a nil
 // pointer dereference when methods are called.
-type UnimplementedGcacheCacheServer struct{}
+type UnimplementedGCacheServer struct{}
 
-func (UnimplementedGcacheCacheServer) Get(context.Context, *Request) (*ResponseForGet, error) {
+func (UnimplementedGCacheServer) Get(context.Context, *Request) (*ResponseForGet, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Get not implemented")
 }
-func (UnimplementedGcacheCacheServer) Set(context.Context, *Request) (*ResponseForGet, error) {
+func (UnimplementedGCacheServer) Set(context.Context, *Request) (*ResponseForGet, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Set not implemented")
 }
-func (UnimplementedGcacheCacheServer) Delete(context.Context, *Request) (*ResponseForDelete, error) {
+func (UnimplementedGCacheServer) Delete(context.Context, *Request) (*ResponseForDelete, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Delete not implemented")
 }
-func (UnimplementedGcacheCacheServer) mustEmbedUnimplementedGcacheCacheServer() {}
-func (UnimplementedGcacheCacheServer) testEmbeddedByValue()                     {}
+func (UnimplementedGCacheServer) mustEmbedUnimplementedGCacheServer() {}
+func (UnimplementedGCacheServer) testEmbeddedByValue()                {}
 
-// UnsafeGcacheCacheServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to GcacheCacheServer will
+// UnsafeGCacheServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to GCacheServer will
 // result in compilation errors.
-type UnsafeGcacheCacheServer interface {
-	mustEmbedUnimplementedGcacheCacheServer()
+type UnsafeGCacheServer interface {
+	mustEmbedUnimplementedGCacheServer()
 }
 
-func RegisterGcacheCacheServer(s grpc.ServiceRegistrar, srv GcacheCacheServer) {
-	// If the following call pancis, it indicates UnimplementedGcacheCacheServer was
+func RegisterGCacheServer(s grpc.ServiceRegistrar, srv GCacheServer) {
+	// If the following call pancis, it indicates UnimplementedGCacheServer was
 	// embedded by pointer and is nil.  This will cause panics if an
 	// unimplemented method is ever invoked, so we test this at initialization
 	// time to prevent it from happening at runtime later due to I/O.
 	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
 		t.testEmbeddedByValue()
 	}
-	s.RegisterService(&GcacheCache_ServiceDesc, srv)
+	s.RegisterService(&GCache_ServiceDesc, srv)
 }
 
-func _GcacheCache_Get_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _GCache_Get_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(Request)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(GcacheCacheServer).Get(ctx, in)
+		return srv.(GCacheServer).Get(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: GcacheCache_Get_FullMethodName,
+		FullMethod: GCache_Get_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GcacheCacheServer).Get(ctx, req.(*Request))
+		return srv.(GCacheServer).Get(ctx, req.(*Request))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _GcacheCache_Set_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _GCache_Set_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(Request)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(GcacheCacheServer).Set(ctx, in)
+		return srv.(GCacheServer).Set(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: GcacheCache_Set_FullMethodName,
+		FullMethod: GCache_Set_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GcacheCacheServer).Set(ctx, req.(*Request))
+		return srv.(GCacheServer).Set(ctx, req.(*Request))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _GcacheCache_Delete_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _GCache_Delete_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(Request)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(GcacheCacheServer).Delete(ctx, in)
+		return srv.(GCacheServer).Delete(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: GcacheCache_Delete_FullMethodName,
+		FullMethod: GCache_Delete_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GcacheCacheServer).Delete(ctx, req.(*Request))
+		return srv.(GCacheServer).Delete(ctx, req.(*Request))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-// GcacheCache_ServiceDesc is the grpc.ServiceDesc for GcacheCache service.
+// GCache_ServiceDesc is the grpc.ServiceDesc for GCache service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var GcacheCache_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "pb.GcacheCache",
-	HandlerType: (*GcacheCacheServer)(nil),
+var GCache_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "pb.GCache",
+	HandlerType: (*GCacheServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "Get",
-			Handler:    _GcacheCache_Get_Handler,
+			Handler:    _GCache_Get_Handler,
 		},
 		{
 			MethodName: "Set",
-			Handler:    _GcacheCache_Set_Handler,
+			Handler:    _GCache_Set_Handler,
 		},
 		{
 			MethodName: "Delete",
-			Handler:    _GcacheCache_Delete_Handler,
+			Handler:    _GCache_Delete_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
