@@ -65,6 +65,7 @@ func NewClient(addr, svcName string, etcdCli *clientv3.Client) (*Client, error) 
 
 // Get 实现 Peer 接口
 func (c *Client) Get(group, key string) ([]byte, error) {
+	// 如果在 3 秒内没有收到服务端的响应，上下文会自动取消，gRPC 调用也会终止
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
