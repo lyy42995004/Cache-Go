@@ -16,8 +16,8 @@ const defaultSvcName = "g-cache"
 
 // PeerPicker 定义peer选择器的接口
 type PeerPicker interface {
-	PickPeek(key string) (peer Peer, ok, self bool)
-	close() error
+	PickPeer(key string) (peer Peer, ok, self bool)
+	Close() error
 }
 
 // Peer 定义缓存节点的接口
@@ -105,7 +105,7 @@ func (cp *ClientPicker) fetchAllServices() error {
 	defer cancel()
 
 	// 从 etcd 中获取所有以 "/services/" + p.svcName 为前缀的键值对
-	resp, err := cp.etcdCli.Get(ctx, "/services/" + cp.svcName, clientv3.WithPrefix())
+	resp, err := cp.etcdCli.Get(ctx, "/services/"+cp.svcName, clientv3.WithPrefix())
 	if err != nil {
 		return fmt.Errorf("failed to get all services: %v", err)
 	}
@@ -127,21 +127,21 @@ func (cp *ClientPicker) fetchAllServices() error {
 func (cp *ClientPicker) watchServiceChanges() {
 	// 监听 etcd 中键值对的变化
 	watcher := clientv3.NewWatcher(cp.etcdCli)
-	wathChan := watcher.Watch(cp.ctx, "/services/" + cp.svcName, clientv3.WithPrefix())
+	watchChan := watcher.Watch(cp.ctx, "/services/"+cp.svcName, clientv3.WithPrefix())
 
 	for {
 		select {
 		case <-cp.ctx.Done():
 			watcher.Close()
 			return
-		case resp := <-wathChan:
+		case resp := <-watchChan:
 			cp.handleWatchEvents(resp.Events)
 		}
 	}
 }
 
 // handleWatchEvents 处理监听到的事件
-func (cp* ClientPicker) handleWatchEvents(events []*clientv3.Event) {
+func (cp *ClientPicker) handleWatchEvents(events []*clientv3.Event) {
 	cp.mu.Lock()
 	defer cp.mu.Unlock()
 
@@ -171,8 +171,8 @@ func (cp* ClientPicker) handleWatchEvents(events []*clientv3.Event) {
 
 // set 添加服务实例
 func (cp *ClientPicker) set(addr string) {
-	client, err :=  NewClient(addr, cp.svcName, cp.etcdCli)
-	if  err != nil {
+	client, err := NewClient(addr, cp.svcName, cp.etcdCli)
+	if err != nil {
 		logrus.Errorf("Failed to create client for %s: %v", addr, err)
 		return
 	}
