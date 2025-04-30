@@ -98,7 +98,7 @@ func getLoaclIP() (string, error) {
 
 	for _, addr := range addrs {
 		// 是否为 net.IPNet 类型，并且不是回环地址
-		if ipNet, ok := addr.(*net.IPAddr); ok && !ipNet.IP.IsLoopback() {
+		if ipNet, ok := addr.(*net.IPNet); ok && !ipNet.IP.IsLoopback() {
 			if ipNet.IP.To4() != nil {
 				return ipNet.IP.String(), nil
 			}
