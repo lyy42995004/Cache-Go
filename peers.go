@@ -3,6 +3,7 @@ package cache
 import (
 	"context"
 	"fmt"
+	"log"
 	"sync"
 	"time"
 
@@ -227,4 +228,15 @@ func (cp *ClientPicker) Close() error {
 		return fmt.Errorf("errors while closing: %v", errs)
 	}
 	return nil
+}
+
+// PrintPeers 打印当前已发现的节点（仅用于调试）
+func (p *ClientPicker) PrintPeers() {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+
+	log.Printf("当前已发现的节点:")
+	for addr := range p.clients {
+		log.Printf("- %s", addr)
+	}
 }
