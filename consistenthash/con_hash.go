@@ -71,7 +71,7 @@ func (m *Map) Add(nodes ...string) error {
 // addNode 添加节点的虚拟节点
 func (m *Map) addNode(node string, replicas int) {
 	for i := range replicas {
-		hash := int(m.config.HashFunc([]byte(fmt.Sprintf("%s-%d", node, i))))
+		hash := int(m.config.HashFunc(fmt.Appendf(nil, "%s-%d", node, i)))
 		m.keys = append(m.keys, hash)
 		m.hashMap[hash] = node
 	}
