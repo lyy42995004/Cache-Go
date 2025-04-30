@@ -55,7 +55,7 @@ func (m *Map) Add(nodes ...string) error {
 	}
 
 	m.mu.Lock()
-	defer m.mu.RUnlock()
+	defer m.mu.Unlock()
 
 	for _, node := range nodes {
 		if node == "" {
