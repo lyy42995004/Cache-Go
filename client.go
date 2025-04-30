@@ -38,7 +38,7 @@ func NewClient(addr, svcName string, etcdCli *clientv3.Client) (*Client, error) 
 	}
 
 	// 建立 gRPC 连接
-	// ToDo: Dial在v2版本会被弃用，改用NewClient
+	// TODO: Dial在v2版本会被弃用，改用NewClient
 	conn, err := grpc.Dial(addr,
 		grpc.WithTransportCredentials(insecure.NewCredentials()), // 使用不安全的传输凭证
 		grpc.WithBlock(),                                     // 阻塞直到连接成功或超时

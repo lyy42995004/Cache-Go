@@ -188,6 +188,7 @@ func (cp *ClientPicker) remove(addr string) {
 }
 
 // PickPeer 选择 peer节点
+// 返回值 Peer节点， 是否找到，是否为当前节点自身
 func (cp *ClientPicker) PickPeer(key string) (Peer, bool, bool) {
 	cp.mu.RLock()
 	defer cp.mu.RUnlock()

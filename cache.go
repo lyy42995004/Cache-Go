@@ -118,6 +118,7 @@ func (c *Cache) SetWithExpiration(key string, value ByteView, expirationTime tim
 }
 
 // Get 从缓存中获取值
+// TODO: Context使用
 func (c *Cache) Get(ctx context.Context, key string) (value ByteView, ok bool) {
 	if atomic.LoadInt32(&c.closed) == 1 {
 		return ByteView{}, false
