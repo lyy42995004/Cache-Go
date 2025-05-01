@@ -81,8 +81,11 @@ go run example/test.go -port 8003 -node C
 ![ 2025-04-30 210743.png](https://s2.loli.net/2025/05/01/DXkItUJxpB3q8LZ.png)
 
 ## 目录树
-> Cache-Go/
+
+> .
+> 
 > ├── .gitignore
+> 
 > ├── README.md
 > ├── go.mod 
 > ├── go.sum 
