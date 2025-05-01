@@ -114,4 +114,4 @@ go run example/test.go -port 8003 -node C
 
 ## 感谢
 
-[@golang/groupcache](https://github.com/golang/groupcache) [@geektutu/gee-cache](https://github.com/geektutu/7days-golang/tree/master/gee-cache) [juguagua/gCache](https://github.com/juguagua/gCache)
+[@golang/groupcache](https://github.com/golang/groupcache) [@geektutu/gee-cache](https://github.com/geektutu/7days-golang/tree/master/gee-cache) [@juguagua/gCache](https://github.com/juguagua/gCache)
