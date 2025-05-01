@@ -34,7 +34,9 @@
 
 ```
 **Registry**: 借助 etcd 租约实现服务注册、注销与动态更新，确保服务可用与节点信息一致。
+
 **SingleFlight**: 用sync.Map管理请求，相同key多次调Do()仅执行一次f()，防缓存击穿。
+
 **ConsistentHash**: 实现一致性哈希算法，算键哈希值选节点，减少节点变更数据迁移，提升扩展性与稳定性。
 
 ## 使用
@@ -79,36 +81,36 @@ go run example/test.go -port 8003 -node C
 ![ 2025-04-30 210743.png](https://s2.loli.net/2025/05/01/DXkItUJxpB3q8LZ.png)
 
 ## 目录树
-Cache-Go/
-├── .gitignore
-├── README.md
-├── go.mod 
-├── go.sum 
-├── byteview.go          # 字节视图相关实现
-├── cache.go             # 缓存核心实现
-├── client.go            # 客户端相关实现
-├── group.go             # 缓存组相关实现
-├── peers.go             # 分布式节点选择器实现
-├── server.go            # 服务器相关实现
-├── store/               # 缓存存储实现
-│   ├── lru.go           # LRU 缓存实现
-│   ├── lru2.go          # LRU2 缓存实现
-│   ├── lru2_test.go     # LRU2 缓存测试
-│   ├── lru_test.go      # LRU 缓存测试
-│   └── store.go         # 缓存接口定义
-├── singleflight/        # 单飞组实现
-│   └── singleflight.go
-├── pb/                  # 协议缓冲区相关文件
-│   ├── gcache.pb.go
-│   ├── gcache.proto
-│   └── gcache_grpc.pb.go
-├── example/             # 使用示例
-│   └── test.go
-├── consistenthash/      # 一致性哈希实现
-│   ├── con_hash.go
-│   └── config.go
-└── registry/            # 服务注册与发现实现
-    └── registry.go
+> Cache-Go/
+> ├── .gitignore
+> ├── README.md
+> ├── go.mod 
+> ├── go.sum 
+> ├── byteview.go          # 字节视图相关实现
+> ├── cache.go             # 缓存核心实现
+> ├── client.go            # 客户端相关实现
+> ├── group.go             # 缓存组相关实现
+> ├── peers.go             # 分布式节点选择器实现
+> ├── server.go            # 服务器相关实现
+> ├── store/               # 缓存存储实现
+> │   ├── lru.go           # LRU 缓存实现
+> │   ├── lru2.go          # LRU2 缓存实现
+> │   ├── lru2_test.go     # LRU2 缓存测试
+> │   ├── lru_test.go      # LRU 缓存测试
+> │   └── store.go         # 缓存接口定义
+> ├── singleflight/        # 单飞组实现
+> │   └── singleflight.go
+> ├── pb/                  # 协议缓冲区相关文件
+> │   ├── gcache.pb.go
+> │   ├── gcache.proto
+> │   └── gcache_grpc.pb.go
+> ├── example/             # 使用示例
+> │   └── test.go
+> ├── consistenthash/      # 一致性哈希实现
+> │   ├── con_hash.go
+> │   └── config.go
+> └── registry/            # 服务注册与发现实现
+>     └── registry.go
 
 ## 感谢
 
