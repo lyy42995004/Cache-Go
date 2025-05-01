@@ -82,38 +82,38 @@ go run example/test.go -port 8003 -node C
 
 ## 目录树
 
-> .
-> 
-> ├── .gitignore
-> 
-> ├── README.md
-> ├── go.mod 
-> ├── go.sum 
-> ├── byteview.go          # 字节视图相关实现
-> ├── cache.go             # 缓存核心实现
-> ├── client.go            # 客户端相关实现
-> ├── group.go             # 缓存组相关实现
-> ├── peers.go             # 分布式节点选择器实现
-> ├── server.go            # 服务器相关实现
-> ├── store/               # 缓存存储实现
-> │   ├── lru.go           # LRU 缓存实现
-> │   ├── lru2.go          # LRU2 缓存实现
-> │   ├── lru2_test.go     # LRU2 缓存测试
-> │   ├── lru_test.go      # LRU 缓存测试
-> │   └── store.go         # 缓存接口定义
-> ├── singleflight/        # 单飞组实现
-> │   └── singleflight.go
-> ├── pb/                  # 协议缓冲区相关文件
-> │   ├── gcache.pb.go
-> │   ├── gcache.proto
-> │   └── gcache_grpc.pb.go
-> ├── example/             # 使用示例
-> │   └── test.go
-> ├── consistenthash/      # 一致性哈希实现
-> │   ├── con_hash.go
-> │   └── config.go
-> └── registry/            # 服务注册与发现实现
->     └── registry.go
+```
+.
+├── .gitignore
+├── README.md
+├── go.mod 
+├── go.sum 
+├── byteview.go          # 字节视图相关实现
+├── cache.go             # 缓存核心实现
+├── client.go            # 客户端相关实现
+├── group.go             # 缓存组相关实现
+├── peers.go             # 分布式节点选择器实现
+├── server.go            # 服务器相关实现
+├── store/               # 缓存存储实现
+│   ├── lru.go           # LRU 缓存实现
+│   ├── lru2.go          # LRU2 缓存实现
+│   ├── lru2_test.go     # LRU2 缓存测试
+│   ├── lru_test.go      # LRU 缓存测试
+│   └── store.go         # 缓存接口定义
+├── singleflight/        # 单飞组实现
+│   └── singleflight.go
+├── pb/                  # 协议缓冲区相关文件
+│   ├── gcache.pb.go
+│   ├── gcache.proto
+│   └── gcache_grpc.pb.go
+├── example/             # 使用示例
+│   └── test.go
+├── consistenthash/      # 一致性哈希实现
+│   ├── con_hash.go
+│   └── config.go
+└── registry/            # 服务注册与发现实现
+    └── registry.go
+```
 
 ## 感谢
 
